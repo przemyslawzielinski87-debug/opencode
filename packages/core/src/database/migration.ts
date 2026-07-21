@@ -19,7 +19,7 @@ export function apply(db: Database) {
   return lock.withPermit(
     Effect.gen(function* () {
       const tables = yield* db.all<{ name: string }>(
-        sql`SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'`,
+        sql`SELECT name FROM sqlite_master WHERE type IN ('table','view') AND name NOT LIKE 'sqlite_%'`,
       )
       if (tables.some((table) => table.name === "session_context_epoch")) {
         yield* preflightSessionContextEpoch(db)
@@ -113,7 +113,7 @@ type ColumnInfo = ColumnContract & { cid: number }
 function preflightSessionContextEpoch(db: Database) {
   return Effect.gen(function* () {
     const table = yield* db.get<{ name: string; type: string }>(
-      sql`SELECT name, type FROM sqlite_master WHERE type IN ('table','view') AND name = ${contextEpochContract.table}`,
+      sql`SELECT name, type FROM sqlite_master WHERE type = 'table' AND name = ${contextEpochContract.table}`,
     )
     if (!table) return yield* Effect.die("session_context_epoch is missing from sqlite_master")
     if (table.type !== "table") return yield* Effect.die("session_context_epoch exists but is not a table")

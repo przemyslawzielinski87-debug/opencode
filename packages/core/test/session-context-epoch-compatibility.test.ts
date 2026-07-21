@@ -257,6 +257,22 @@ describe("SessionContextEpoch compatibility", () => {
     ).rejects.toThrow("incompatible required column shape")
   })
 
+  test("F7C: view conflict is blocked before the migration path", () =>
+    expect(
+      run(
+        Effect.gen(function* () {
+          const db = yield* makeDb
+          yield* createSession(db)
+          yield* createMigrationTable(db, [...baseMigrationIds, compat])
+          yield* db.run(
+            sql`CREATE VIEW session_context_epoch AS SELECT 's1' AS session_id, 'b1' AS baseline, '{}' AS snapshot, 0 AS baseline_seq, NULL AS replacement_seq, 0 AS revision, 'build' AS agent`,
+          )
+          yield* DatabaseMigration.apply(db)
+        }),
+      ),
+    ).rejects.toThrow()
+  )
+
   test("F7D: unknown schema without reliable migration journal is blocked", async () => {
     await expect(
       run(
