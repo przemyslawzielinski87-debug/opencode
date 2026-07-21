@@ -1,0 +1,16 @@
+[data-component="environment-badge-v2"] {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  border: 1px solid var(--v2-border-border-base);
+  background: var(--v2-background-bg-layer-02);
+  color: var(--v2-text-text-muted);
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 500;
+  user-select: none;
+  white-space: nowrap;
+}

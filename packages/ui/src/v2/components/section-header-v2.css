@@ -1,0 +1,31 @@
+[data-component="section-header-v2"] {
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  width: 100%;
+}
+
+[data-component="section-header-v2"] [data-slot="title"] {
+  margin: 0;
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1.25;
+  color: var(--v2-text-text-base);
+}
+
+[data-component="section-header-v2"] [data-slot="subtitle"] {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--v2-text-text-muted);
+}
+
+[data-component="section-header-v2"] [data-slot="actions"] {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}

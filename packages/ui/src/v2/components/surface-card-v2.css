@@ -1,0 +1,25 @@
+[data-component="surface-card-v2"] {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  border-radius: var(--radius-md, 10px);
+  background: var(--v2-background-bg-layer-01);
+  border: 1px solid var(--v2-border-border-base);
+  box-shadow: var(--v2-elevation-raised);
+}
+
+[data-component="surface-card-v2"][data-density="compact"] {
+  padding: 8px;
+  gap: 8px;
+}
+
+[data-component="surface-card-v2"][data-density="default"] {
+  padding: 12px;
+  gap: 12px;
+}
+
+[data-component="surface-card-v2"][data-density="comfortable"] {
+  padding: 16px;
+  gap: 16px;
+}

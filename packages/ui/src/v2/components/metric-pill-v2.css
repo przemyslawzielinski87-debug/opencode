@@ -1,0 +1,25 @@
+[data-component="metric-pill-v2"] {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  border: 1px solid var(--v2-border-border-base);
+  background: var(--v2-background-bg-layer-01);
+  color: var(--v2-text-text-base);
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 500;
+  user-select: none;
+}
+
+[data-component="metric-pill-v2"] [data-slot="value"] {
+  font-variant-numeric: tabular-nums;
+}
+
+[data-component="metric-pill-v2"] [data-slot="label"] {
+  color: var(--v2-text-text-muted);
+  font-weight: 400;
+  font-size: 11px;
+}

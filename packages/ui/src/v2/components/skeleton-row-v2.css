@@ -1,0 +1,19 @@
+[data-component="skeleton-row-v2"] {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: var(--radius-md, 10px);
+  background: var(--v2-background-bg-layer-01);
+  border: 1px solid var(--v2-border-border-muted);
+}
+
+[data-component="skeleton-row-v2"] [data-slot="content"] {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}

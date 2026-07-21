@@ -1,0 +1,77 @@
+[data-component="responsive-stack-v2"] {
+  display: flex;
+}
+
+[data-component="responsive-stack-v2"][data-direction="row"] {
+  flex-direction: row;
+}
+
+[data-component="responsive-stack-v2"][data-direction="column"] {
+  flex-direction: column;
+}
+
+[data-component="responsive-stack-v2"][data-wrap] {
+  flex-wrap: wrap;
+}
+
+[data-component="responsive-stack-v2"][data-align="start"] {
+  align-items: flex-start;
+}
+
+[data-component="responsive-stack-v2"][data-align="center"] {
+  align-items: center;
+}
+
+[data-component="responsive-stack-v2"][data-align="end"] {
+  align-items: flex-end;
+}
+
+[data-component="responsive-stack-v2"][data-align="stretch"] {
+  align-items: stretch;
+}
+
+[data-component="responsive-stack-v2"][data-justify="start"] {
+  justify-content: flex-start;
+}
+
+[data-component="responsive-stack-v2"][data-justify="center"] {
+  justify-content: center;
+}
+
+[data-component="responsive-stack-v2"][data-justify="end"] {
+  justify-content: flex-end;
+}
+
+[data-component="responsive-stack-v2"][data-justify="between"] {
+  justify-content: space-between;
+}
+
+[data-component="responsive-stack-v2"][data-gap="1"] {
+  gap: 4px;
+}
+
+[data-component="responsive-stack-v2"][data-gap="2"] {
+  gap: 8px;
+}
+
+[data-component="responsive-stack-v2"][data-gap="3"] {
+  gap: 12px;
+}
+
+[data-component="responsive-stack-v2"][data-gap="4"] {
+  gap: 16px;
+}
+
+[data-component="responsive-stack-v2"][data-gap="5"] {
+  gap: 20px;
+}
+
+[data-component="responsive-stack-v2"][data-gap="6"] {
+  gap: 24px;
+}
+
+@media (max-width: 768px) {
+  [data-component="responsive-stack-v2"][data-direction="row"] {
+    flex-direction: column;
+  }
+}

@@ -1,0 +1,69 @@
+[data-component="status-dot-v2"] {
+  box-sizing: border-box;
+  display: inline-block;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background: var(--v2-status-bg-muted);
+  border: 1px solid var(--v2-status-border-muted);
+  width: 8px;
+  height: 8px;
+}
+
+[data-component="status-dot-v2"][data-status="healthy"] {
+  background: var(--v2-status-bg-healthy);
+  border-color: var(--v2-status-border-healthy);
+}
+
+[data-component="status-dot-v2"][data-status="degraded"] {
+  background: var(--v2-status-bg-degraded);
+  border-color: var(--v2-status-border-degraded);
+}
+
+[data-component="status-dot-v2"][data-status="failed"] {
+  background: var(--v2-status-bg-failed);
+  border-color: var(--v2-status-border-failed);
+}
+
+[data-component="status-dot-v2"][data-status="running"] {
+  background: var(--v2-status-bg-running);
+  border-color: var(--v2-status-border-running);
+}
+
+[data-component="status-dot-v2"][data-status="queued"] {
+  background: var(--v2-status-bg-queued);
+  border-color: var(--v2-status-border-queued);
+}
+
+[data-component="status-dot-v2"][data-size="small"] {
+  width: 6px;
+  height: 6px;
+}
+
+[data-component="status-dot-v2"][data-size="large"] {
+  width: 10px;
+  height: 10px;
+}
+
+[data-component="status-dot-v2"][data-size="emphasized"] {
+  width: 12px;
+  height: 12px;
+  border-width: 2px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-component="status-dot-v2"][data-pulse] {
+    animation: status-dot-v2-pulse 1.6s ease-in-out infinite;
+  }
+}
+
+@keyframes status-dot-v2-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.92);
+  }
+}

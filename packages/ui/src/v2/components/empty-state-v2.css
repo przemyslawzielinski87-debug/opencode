@@ -1,0 +1,43 @@
+[data-component="empty-state-v2"] {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+  padding: 24px 16px;
+  color: var(--v2-text-text-muted);
+  border-radius: var(--radius-md, 10px);
+  background: var(--v2-background-bg-layer-01);
+}
+
+[data-component="empty-state-v2"] [data-slot="icon"] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 9999px;
+  background: var(--v2-background-bg-layer-02);
+  color: var(--v2-text-text-muted);
+}
+
+[data-component="empty-state-v2"] [data-slot="title"] {
+  margin: 0;
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1.25;
+  color: var(--v2-text-text-base);
+}
+
+[data-component="empty-state-v2"] [data-slot="description"] {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  max-width: 40ch;
+}
+
+[data-component="empty-state-v2"] [data-slot="action"] {
+  margin-top: 4px;
+}
