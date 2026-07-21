@@ -131,8 +131,8 @@ export const create = (registrations: ReadonlyMap<string, Registration>) => {
   })
 }
 
-export const instructions = (registrations: ReadonlyMap<string, Registration>) => {
-  return runtime(registrations, () => Effect.fail(toolError("Execute context is unavailable"))).instructions()
+export const catalog = (registrations: ReadonlyMap<string, Registration>) => {
+  return runtime(registrations, () => Effect.fail(toolError("Execute context is unavailable"))).catalog()
 }
 
 function runtime(
@@ -143,7 +143,8 @@ function runtime(
   const tools: Record<string, Tool.Definition<never>> = {}
   for (const [name, registration] of registrations) {
     const child = definition(name, registration.tool)
-    const path = registration.namespace === undefined ? registration.name : `${registration.namespace}.${registration.name}`
+    const path =
+      registration.namespace === undefined ? registration.name : `${registration.namespace}.${registration.name}`
     tools[path] = Tool.make({
       description: child.description,
       input: child.inputSchema,

@@ -30,7 +30,6 @@ describe("dotted tool names", () => {
     expect(catalog).toHaveLength(1)
     expect(catalog[0]?.path).toBe("api.issues.list")
     expect(catalog[0]?.signature).toStartWith("tools.api.issues.list(input:")
-    expect(runtime.instructions()).toContain("tools.api.issues.list(input:")
   })
 
   test("the advertised dotted path is executable", async () => {
@@ -116,7 +115,7 @@ describe("blocked member names on tool paths", () => {
 
   test("a literal __proto__ key cannot poison a namespace into a fake definition", async () => {
     const poisoned = CodeMode.make({
-      tools: { ns: { "__proto__": echo("Hidden", "hidden"), real: echo("Real tool", "real") } },
+      tools: { ns: { __proto__: echo("Hidden", "hidden"), real: echo("Real tool", "real") } },
     })
     expect(poisoned.catalog().map((tool) => tool.path)).toEqual(["ns.real"])
     expect(await value(poisoned, `return await tools.ns.real({})`)).toBe("real")

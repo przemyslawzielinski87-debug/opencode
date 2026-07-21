@@ -1,7 +1,8 @@
 export * as CodeMode from "./codemode"
 
 import { Context, Effect, Layer, Scope } from "effect"
-import { makeLocationNode } from "./effect/app-node"
+import { CodeModeCatalog } from "./codemode/catalog"
+import { makeLocationNode } from "@opencode-ai/util/effect/app-node"
 import { PermissionV2 } from "./permission"
 import { ExecuteTool } from "./tool/execute"
 import { permission, registrationEntries, type AnyTool } from "./tool/tool"
@@ -10,7 +11,7 @@ import { Wildcard } from "./util/wildcard"
 
 export interface Materialization {
   readonly tool?: AnyTool
-  readonly instructions?: string
+  readonly catalog?: ReadonlyArray<CodeModeCatalog.Entry>
 }
 
 export interface Interface {
@@ -26,10 +27,7 @@ export class Service extends Context.Service<Service, Interface>()("@opencode/v2
 const layer = Layer.effect(
   Service,
   Effect.gen(function* () {
-    const local = new Map<
-      string,
-      Array<{ readonly token: object; readonly registration: ExecuteTool.Registration }>
-    >()
+    const local = new Map<string, Array<{ readonly token: object; readonly registration: ExecuteTool.Registration }>>()
 
     return Service.of({
       register: Effect.fn("CodeMode.register")(function* (tools, options) {
@@ -70,7 +68,7 @@ const layer = Layer.effect(
         if (executeRule?.resource === "*" && executeRule.effect === "deny") return {}
         return {
           tool: ExecuteTool.create(registrations),
-          instructions: ExecuteTool.instructions(registrations),
+          catalog: ExecuteTool.catalog(registrations),
         }
       }),
     })
