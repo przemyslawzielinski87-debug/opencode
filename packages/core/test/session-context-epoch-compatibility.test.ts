@@ -168,6 +168,24 @@ describe("session_context_epoch preflight", () => {
     ).rejects.toThrow("session_context_epoch exists but has no reliable migration journal")
   })
 
+  test("rejects session_context_epoch when journal has a later marker but not the creation marker", async () => {
+    await expect(
+      run(
+        Effect.gen(function* () {
+          const db = yield* makeDb
+          const creationIndex = migrations.findIndex(
+            (migration) => migration.id === "20260605003541_add_session_context_snapshot",
+          )
+          const laterMarker = migrations[creationIndex + 1].id
+          yield* db.run(sql`CREATE TABLE migration (id TEXT PRIMARY KEY, time_completed INTEGER NOT NULL)`)
+          yield* db.run(sql`INSERT INTO migration (id, time_completed) VALUES (${laterMarker}, 1)`)
+          yield* db.run(sql`${sql.raw(createSessionContextEpochTable)}`)
+          yield* DatabaseMigration.apply(db)
+        }),
+      ),
+    ).rejects.toThrow("session_context_epoch exists but its creation migration is missing from the journal")
+  })
+
   test("rejects a future migration marker in the session_context_epoch journal", async () => {
     await expect(
       run(
