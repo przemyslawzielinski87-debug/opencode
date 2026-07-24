@@ -27,6 +27,7 @@ import { ModelV2 } from "@opencode-ai/core/model"
 import { AppNodeBuilder } from "@opencode-ai/core/effect/app-node-builder"
 import { LayerNode } from "@opencode-ai/core/effect/layer-node"
 import { LayerNodePlatform } from "@opencode-ai/core/effect/app-node-platform"
+import { LLMEvent } from "@opencode-ai/llm"
 
 type ConfigModel = NonNullable<NonNullable<ConfigV1.Info["provider"]>[string]["models"]>[string]
 
@@ -2000,5 +2001,48 @@ describe("session.llm.stream", () => {
         },
       }),
     },
+  )
+})
+
+describe("session.llm.streamWithRuntime", () => {
+  it.instance("reports runtime id with a fake stream", () =>
+    Effect.gen(function* () {
+      const fake = Layer.succeed(
+        LLM.Service,
+        LLM.Service.of({
+          stream: () => Stream.empty,
+          streamWithRuntime: () =>
+            Effect.succeed({
+              runtimeID: "native" as const,
+              stream: Stream.make(LLMEvent.finish({ reason: "stop" })),
+            }),
+        }),
+      )
+      const result = yield* LLM.Service.use((svc) =>
+        svc.streamWithRuntime({
+          user: {
+            id: MessageID.make("msg_1"),
+            sessionID: SessionID.make("ses_1"),
+            role: "user",
+            time: { created: 0 },
+            agent: "test",
+            model: {
+              providerID: ProviderV2.ID.make("test"),
+              modelID: ModelV2.ID.make("test"),
+              variant: "high",
+            },
+          } satisfies SessionV1.User,
+          sessionID: SessionID.make("ses_1"),
+          model: { providerID: "test", id: "test-model" } as Provider.Model,
+          agent: { name: "test", mode: "primary", options: {}, permission: [] } as Agent.Info,
+          system: [],
+          messages: [],
+          tools: {},
+        }),
+      ).pipe(Effect.provide(fake))
+      expect(result.runtimeID).toBe("native")
+      const events = yield* result.stream.pipe(Stream.runCollect)
+      expect(events.length).toBe(1)
+    }),
   )
 })

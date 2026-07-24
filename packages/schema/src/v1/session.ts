@@ -11,6 +11,7 @@ import { ascending } from "../identifier"
 import { SessionID } from "../session-id"
 import { WorkspaceID } from "../workspace-id"
 import { PermissionV1 } from "./permission"
+import { ModelRouteAttestation } from "./model-route-attestation"
 
 const Timestamp = Schema.Finite.check(Schema.isGreaterThanOrEqualTo(0))
 
@@ -627,6 +628,7 @@ const events = {
       partID: PartID,
     },
   }),
+  ModelRouteAttestation: ModelRouteAttestation.Event,
 }
 
 export const PartDelta = define({
@@ -669,6 +671,7 @@ export const Event = {
     events.MessageRemoved,
     events.PartUpdated,
     events.PartRemoved,
+    events.ModelRouteAttestation,
     PartDelta,
     Diff,
     Error,

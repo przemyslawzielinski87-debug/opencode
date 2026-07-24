@@ -25,6 +25,8 @@ import { isRecord } from "@/util/record"
 import { EventV2Bridge } from "@/event-v2-bridge"
 import { Database } from "@opencode-ai/core/database/database"
 import { Usage, type LLMEvent } from "@opencode-ai/llm"
+import { ModelRouteAttestation } from "./model-route-attestation"
+import { ulid } from "ulid"
 
 const DOOM_LOOP_THRESHOLD = 3
 export type Result = "compact" | "stop" | "continue"
@@ -113,6 +115,10 @@ const layer = Layer.effect(
         reasoningMap: {},
       }
       let aborted = false
+      let emitted = false
+      let streamStarted = false
+      let selectedRuntime: "native" | "ai-sdk" = "ai-sdk"
+      const runID = yield* Effect.sync(() => `run_${ulid()}`)
 
       const parse = (e: unknown) =>
         MessageV2.fromError(e, {
@@ -624,6 +630,21 @@ const layer = Layer.effect(
         yield* status.set(ctx.sessionID, { type: "idle" })
       })
 
+      const emitAttestation = (streamInput: LLM.StreamInput): Effect.Effect<void> =>
+        Effect.gen(function* () {
+          if (emitted || !streamStarted) return
+          emitted = true
+          const requested = streamInput.user.model
+          yield* ModelRouteAttestation.emit(events, {
+            sessionID: input.sessionID,
+            runID,
+            assistantMessage: input.assistantMessage,
+            requested: { providerID: requested.providerID, modelID: requested.modelID },
+            executedModel: input.model,
+            runtimeID: selectedRuntime,
+          })
+        })
+
       const process = Effect.fn("SessionProcessor.process")(function* (streamInput: LLM.StreamInput) {
         yield* Effect.logInfo("process", {
           "session.id": input.sessionID,
@@ -637,7 +658,9 @@ const layer = Layer.effect(
             ctx.currentText = undefined
             ctx.reasoningMap = {}
             yield* status.set(ctx.sessionID, { type: "busy" })
-            const stream = llm.stream(streamInput)
+            const { runtimeID, stream } = yield* llm.streamWithRuntime(streamInput)
+            selectedRuntime = runtimeID
+            streamStarted = true
 
             yield* stream.pipe(
               Stream.tap((event) => handleEvent(event)),
@@ -674,6 +697,7 @@ const layer = Layer.effect(
             ),
             Effect.catch(halt),
             Effect.ensuring(cleanup()),
+            Effect.ensuring(Effect.void),
           )
 
           if (ctx.needsCompaction) return "compact"
