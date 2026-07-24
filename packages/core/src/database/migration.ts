@@ -113,13 +113,15 @@ function assertReliableJournal(db: Database) {
       ids.push(...rows.map((row) => row.id))
     }
 
-    if (ids.length === 0) {
-      return yield* Effect.die("session_context_epoch exists but has no reliable migration journal")
-    }
-
     const maxKnown = migrations[migrations.length - 1].id
     if (ids.some((id) => id > maxKnown)) {
       return yield* Effect.die("session_context_epoch migration journal contains a future migration marker")
+    }
+
+    if (!ids.includes(SESSION_CONTEXT_EPOCH_FIRST_MIGRATION)) {
+      return yield* Effect.die(
+        "session_context_epoch exists but its creation migration is missing from the journal",
+      )
     }
   })
 }
