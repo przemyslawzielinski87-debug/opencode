@@ -343,9 +343,11 @@ describe("PRZ-96 R2 / model.route.attestation", () => {
     expect(inInventory).toBe(true)
   })
 
-  test("T21: forbidden metadata cannot be represented in the schema type", () => {
+  test("T21: forbidden metadata cannot be represented in the schema type (real compile-time guard)", () => {
     // The schema's TypeScript type is closed: unknown fields are not declared.
-    type Fields = keyof Schema.Schema.Type<typeof RouteAttestation.data>
+    // The compile-time guard below is structural — if any forbidden field ever becomes
+    // a key of the durable event data type, the next `_CompileTimeGuard` alias fails
+    // TypeScript compilation (AssignNever constraint not satisfied).
     const forbiddenFields = [
       "apiKey",
       "bearer",
@@ -364,14 +366,184 @@ describe("PRZ-96 R2 / model.route.attestation", () => {
       "endpointUrl",
       "metadata",
     ] as const
-    // TypeScript-level guard: the keys must not be assignable to Fields.
+    type ForbiddenField = (typeof forbiddenFields)[number]
+    type Data = Schema.Schema.Type<typeof RouteAttestation.data>
+    // ponytail: `Extract<ForbiddenField, keyof Data>` is `never` iff no forbidden
+    // field is a data key. `AssertNever<T extends never>` requires the type to be
+    // exactly `never`; any non-empty overlap violates the constraint and breaks
+    // the build. This is the contract — the type alias below makes it visible.
+    type AssertNever<T extends never> = T
+    type _Overlap = Extract<ForbiddenField, keyof Data>
+    type _CompileTimeGuard = AssertNever<_Overlap>
+    // The assignment below enforces the never constraint at compile time.
+    // If _Overlap becomes non-empty, the cast `as _CompileTimeGuard` is invalid
+    // and the typecheck fails. `undefined as never` is the standard pattern for
+    // a value of type `never`.
+    const _proof: _CompileTimeGuard = undefined as never
+    void _proof
+    // Runtime defense in depth: a canonical payload never includes any forbidden key.
+    const sample = makePayload() as Record<string, unknown>
     for (const field of forbiddenFields) {
-      const k: Fields = field as unknown as Fields
-      // Runtime assertion: the canonical form never includes these names
-      const sample = makePayload() as Record<string, unknown>
       expect(sample[field as string]).toBeUndefined()
-      // Suppress unused variable warning by referencing k
-      void k
+    }
+  })
+
+  // --- PRZ-103: identity-result / confidence coherence correction matrix ---
+
+  test("C01: false MISMATCH_DETECTED (coherent identities) is rejected", () => {
+    // requested == executed AND observed.providerFamily == executed.providerFamily
+    // ⇒ no mismatch source exists. identityResult=MISMATCH_DETECTED must fail closed.
+    const payload = makePayload({
+      identityResult: "MISMATCH_DETECTED",
+      confidence: "REJECTED" as const,
+      silentFallback: { detected: true, reason: "claimed_but_unproven" },
+    })
+    const validation = validatePayload(payload as any)
+    expect(validation._tag).toBe("Left")
+    expect((validation as any).left.join("\n")).toMatch(/MISMATCH_DETECTED/)
+  })
+
+  test("C02: real requested/executed providerFamily mismatch classifies MISMATCH_DETECTED", () => {
+    // requested vs executed: only providerFamily differs, modelID equal.
+    const payload = makePayload({
+      requested: { providerFamily: "anthropic", modelID: "claude-3-5-sonnet" },
+      executed: { providerFamily: "openai", modelID: "claude-3-5-sonnet" },
+      identityResult: "MISMATCH_DETECTED",
+      confidence: "REJECTED" as const,
+      silentFallback: { detected: true, reason: "route_change_undeclared" },
+    })
+    const validation = validatePayload(payload as any)
+    expect(validation._tag).toBe("Right")
+  })
+
+  test("C03: real requested/executed modelID mismatch classifies MISMATCH_DETECTED", () => {
+    // requested vs executed: only modelID differs, providerFamily equal.
+    const payload = makePayload({
+      requested: { providerFamily: "anthropic", modelID: "claude-3-5-sonnet" },
+      executed: { providerFamily: "anthropic", modelID: "gpt-4" },
+      identityResult: "MISMATCH_DETECTED",
+      confidence: "REJECTED" as const,
+      silentFallback: { detected: true, reason: "model_swap_undeclared" },
+    })
+    const validation = validatePayload(payload as any)
+    expect(validation._tag).toBe("Right")
+  })
+
+  test("C04: real observed/executed providerFamily mismatch classifies MISMATCH_DETECTED", () => {
+    // requested == executed (no requested/executed mismatch); observed.providerFamily
+    // differs from executed.providerFamily ⇒ real observed/executed mismatch source.
+    const payload = makePayload({
+      requested: { providerFamily: "anthropic", modelID: "claude-3-5-sonnet" },
+      executed: { providerFamily: "anthropic", modelID: "claude-3-5-sonnet" },
+      observation: { status: "AVAILABLE" as const, observed: { providerFamily: "openai" } },
+      identityResult: "MISMATCH_DETECTED",
+      confidence: "REJECTED" as const,
+    })
+    const validation = validatePayload(payload as any)
+    expect(validation._tag).toBe("Right")
+  })
+
+  test("C05: MISMATCH_DETECTED with non-REJECTED confidence is rejected", () => {
+    // Real mismatch source exists, but confidence is not the binding REJECTED.
+    const payload = makePayload({
+      requested: { providerFamily: "anthropic", modelID: "claude-3-5-sonnet" },
+      executed: { providerFamily: "openai", modelID: "claude-3-5-sonnet" },
+      identityResult: "MISMATCH_DETECTED",
+      confidence: "ADAPTER_PROVEN" as const,
+      silentFallback: { detected: true, reason: "wrong_confidence" },
+    })
+    const validation = validatePayload(payload as any)
+    expect(validation._tag).toBe("Left")
+    expect((validation as any).left.join("\n")).toMatch(/binding/i)
+  })
+
+  test("C06: REQUEST_ONLY with non-UNPROVEN confidence is rejected", () => {
+    const payload = makePayload({
+      identityResult: "REQUEST_ONLY",
+      confidence: "ADAPTER_PROVEN" as const,
+    })
+    delete (payload as any).executed
+    payload.integrityDigest = computeIntegrityDigest(payload as any, sha256Hex)
+    const validation = validatePayload(payload as any)
+    expect(validation._tag).toBe("Left")
+    expect((validation as any).left.join("\n")).toMatch(/binding/i)
+  })
+
+  test("C07: ADAPTER_CONFIRMED with non-ADAPTER_PROVEN confidence is rejected", () => {
+    const payload = makePayload({
+      identityResult: "ADAPTER_CONFIRMED",
+      confidence: "UNPROVEN" as const,
+    })
+    const validation = validatePayload(payload as any)
+    expect(validation._tag).toBe("Left")
+    expect((validation as any).left.join("\n")).toMatch(/binding/i)
+  })
+
+  test("C08: PROVIDER_CONFIRMED with non-PROVIDER_PROVEN confidence is rejected", () => {
+    const payload = makePayload({
+      identityResult: "PROVIDER_CONFIRMED",
+      providerEvidence: { class: "PRZ79_ADAPTER_PROVIDER_PROOF" as const },
+      confidence: "UNPROVEN" as const,
+    })
+    const validation = validatePayload(payload as any)
+    expect(validation._tag).toBe("Left")
+    expect((validation as any).left.join("\n")).toMatch(/binding/i)
+  })
+
+  test("C09: OBSERVATION_UNAVAILABLE with non-UNAVAILABLE confidence is rejected", () => {
+    const payload = makePayload({
+      observation: { status: "UNAVAILABLE" as const },
+      identityResult: "OBSERVATION_UNAVAILABLE",
+      confidence: "UNPROVEN" as const,
+    })
+    const validation = validatePayload(payload as any)
+    expect(validation._tag).toBe("Left")
+    expect((validation as any).left.join("\n")).toMatch(/binding/i)
+  })
+
+  test("C10: each valid identity/confidence binding pair remains accepted", () => {
+    // Regression: every cell in the binding matrix admits a payload when all other
+    // cross-field rules are satisfied. This prevents future regressions in the
+    // coherence contract.
+    const cases: Array<{
+      overrides: Record<string, unknown>
+      dropExecuted?: boolean
+    }> = [
+      // REQUEST_ONLY + UNPROVEN
+      { overrides: { identityResult: "REQUEST_ONLY", confidence: "UNPROVEN" }, dropExecuted: true },
+      // ADAPTER_CONFIRMED + ADAPTER_PROVEN
+      { overrides: { identityResult: "ADAPTER_CONFIRMED", confidence: "ADAPTER_PROVEN" } },
+      // PROVIDER_CONFIRMED + PROVIDER_PROVEN
+      {
+        overrides: {
+          identityResult: "PROVIDER_CONFIRMED",
+          confidence: "PROVIDER_PROVEN",
+          providerEvidence: { class: "PRZ79_ADAPTER_PROVIDER_PROOF" as const },
+        },
+      },
+      // MISMATCH_DETECTED + REJECTED (observed/executed mismatch)
+      {
+        overrides: {
+          identityResult: "MISMATCH_DETECTED",
+          confidence: "REJECTED",
+          observation: { status: "AVAILABLE" as const, observed: { providerFamily: "openai" } },
+        },
+      },
+      // OBSERVATION_UNAVAILABLE + UNAVAILABLE
+      {
+        overrides: {
+          identityResult: "OBSERVATION_UNAVAILABLE",
+          confidence: "UNAVAILABLE",
+          observation: { status: "UNAVAILABLE" as const },
+        },
+      },
+    ]
+    for (const c of cases) {
+      const payload = makePayload(c.overrides as any)
+      if (c.dropExecuted) delete (payload as any).executed
+      payload.integrityDigest = computeIntegrityDigest(payload as any, sha256Hex)
+      const validation = validatePayload(payload as any)
+      expect(validation._tag).toBe("Right")
     }
   })
 

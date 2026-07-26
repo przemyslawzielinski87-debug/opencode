@@ -253,10 +253,61 @@ const routeKey = (identity: { providerFamily: string; modelID: string }) =>
 
 export type ValidationResult = { readonly _tag: "Right"; readonly right: true } | { readonly _tag: "Left"; readonly left: readonly string[] }
 
+// ---------------------------------------------------------------------------
+// PRZ-103: identity-result / confidence binding contract.
+// Each identity result has exactly one binding confidence. Any other pairing
+// (including REJECTED for non-MISMATCH_DETECTED results) fails closed.
+// ---------------------------------------------------------------------------
+const IDENTITY_CONFIDENCE_BINDING = {
+  REQUEST_ONLY: "UNPROVEN",
+  ADAPTER_CONFIRMED: "ADAPTER_PROVEN",
+  PROVIDER_CONFIRMED: "PROVIDER_PROVEN",
+  MISMATCH_DETECTED: "REJECTED",
+  OBSERVATION_UNAVAILABLE: "UNAVAILABLE",
+} as const satisfies Readonly<Record<IdentityResult, Confidence>>
+
+const expectedConfidence = (result: IdentityResult): Confidence => IDENTITY_CONFIDENCE_BINDING[result]
+
+// True iff at least one identity mismatch source is provably present.
+// Two sources are recognized:
+//   A. requested-vs-executed: providerFamily or modelID differ.
+//   B. observed-vs-executed: observed.providerFamily differs from executed.providerFamily.
+// ObservedIdentity intentionally does not include a modelID (PERSONAL_DATA / SECRET_SCAN),
+// so a model-level observed mismatch is not representable in this contract.
+const hasIdentityMismatch = (payload: PayloadShape): boolean => {
+  if (payload.executed !== undefined) {
+    if (payload.executed.providerFamily !== payload.requested.providerFamily) return true
+    if (payload.executed.modelID !== payload.requested.modelID) return true
+  }
+  if (
+    payload.executed !== undefined &&
+    payload.observation.observed !== undefined &&
+    payload.observation.observed.providerFamily !== payload.executed.providerFamily
+  ) {
+    return true
+  }
+  return false
+}
+
 export const validatePayload = (
   payload: PayloadShape,
 ): ValidationResult => {
   const errors: string[] = []
+
+  // --- identityResult ↔ confidence binding (PRZ-103 coherence contract) ---
+  const binding = expectedConfidence(payload.identityResult)
+  if (payload.confidence !== binding) {
+    errors.push(
+      `identityResult (${payload.identityResult}) requires binding confidence ${binding}; received ${payload.confidence}`,
+    )
+  }
+
+  // --- MISMATCH_DETECTED requires a real mismatch source ---
+  if (payload.identityResult === "MISMATCH_DETECTED" && !hasIdentityMismatch(payload)) {
+    errors.push(
+      "MISMATCH_DETECTED requires at least one proven identity mismatch source (requested≠executed or observed≠executed)",
+    )
+  }
 
   // --- identityResult ↔ executed/fallback/observation ---
   if (payload.identityResult === "REQUEST_ONLY" && payload.executed !== undefined) {
@@ -361,22 +412,12 @@ const options = {
 export const RouteAttestation = define({
   type: "model.route.attestation",
   ...options,
-  schema: {
-    sessionID: SessionID,
-    messageID: MessageID,
-    attemptID: AttemptID,
-    timestamp: Schema.Finite.check(Schema.isGreaterThanOrEqualTo(0)),
-    requested: RequestedIdentity,
-    executed: optional(ExecutedIdentity),
-    observation: Observation,
-    providerEvidence: optional(ProviderEvidence),
-    fallback: Fallback,
-    silentFallback: optional(SilentFallback),
-    identityResult: IdentityResult,
-    confidence: Confidence,
-    integrityDigest: Schema.String,
-    schemaVersion: SchemaVersion,
-  },
+  // ponytail: derive the inline schema from the canonical RouteAttestationData
+  // definition. This is the established repository pattern (see
+  // packages/schema/src/v1/question.ts, permission.ts, project.ts, etc.) and
+  // removes the duplicated field map without changing optionality, the exported
+  // data type, inventory registration, or any test.
+  schema: RouteAttestationData.fields,
 })
 
 export const Event = {
