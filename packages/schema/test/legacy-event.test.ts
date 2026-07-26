@@ -18,9 +18,10 @@ describe("legacy public event schemas", () => {
       "message.part.delta",
       "session.diff",
       "session.error",
+      "model.route.attestation",
     ])
     const durable = SessionV1.Event.Definitions.filter((event) => event.durable !== undefined)
-    expect(durable).toHaveLength(7)
+    expect(durable).toHaveLength(8)
     expect(durable.every((event) => event.durable?.aggregate === "sessionID")).toBe(true)
     expect(durable.every((event) => event.durable?.version === 1)).toBe(true)
   })
