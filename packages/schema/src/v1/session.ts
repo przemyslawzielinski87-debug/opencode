@@ -11,6 +11,7 @@ import { ascending } from "../identifier"
 import { SessionID } from "../session-id"
 import { WorkspaceID } from "../workspace-id"
 import { PermissionV1 } from "./permission"
+import { ModelRouteAttestationV1 } from "./model-route-attestation"
 
 const Timestamp = Schema.Finite.check(Schema.isGreaterThanOrEqualTo(0))
 
@@ -661,6 +662,7 @@ export const Event = {
   PartDelta,
   Diff,
   Error,
+  RouteAttestation: ModelRouteAttestationV1.Event.RouteAttestation,
   Definitions: inventory(
     events.Created,
     events.Updated,
@@ -672,5 +674,6 @@ export const Event = {
     PartDelta,
     Diff,
     Error,
+    ModelRouteAttestationV1.Event.RouteAttestation,
   ),
 }
