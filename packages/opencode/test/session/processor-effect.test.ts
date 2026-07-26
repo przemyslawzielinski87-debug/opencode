@@ -204,6 +204,24 @@ const providerErrorLLM = Layer.succeed(
         LLMEvent.stepFinish({ index: 0, reason: "stop" }),
         LLMEvent.finish({ reason: "stop" }),
       ),
+    streamWithRuntime: () =>
+      Effect.succeed({
+        runtimeID: "ai-sdk" as const,
+        stream: Stream.make(
+          LLMEvent.stepStart({ index: 0 }),
+          LLMEvent.toolInputStart({ id: "call-1", name: "lookup" }),
+          LLMEvent.toolInputEnd({ id: "call-1", name: "lookup" }),
+          LLMEvent.toolCall({ id: "call-1", name: "lookup", input: {}, providerExecuted: true }),
+          LLMEvent.toolResult({
+            id: "call-1",
+            name: "lookup",
+            result: { type: "error", value: "provider boom" },
+            providerExecuted: true,
+          }),
+          LLMEvent.stepFinish({ index: 0, reason: "stop" }),
+          LLMEvent.finish({ reason: "stop" }),
+        ),
+      }),
   }),
 )
 const providerErrorEnv = LayerNode.compile(root, [...replacements, [LLM.node, providerErrorLLM]])
@@ -221,6 +239,18 @@ const fragmentFailureLLM = Layer.succeed(
         LLMEvent.textDelta({ id: "text-1", text: "partial" }),
         LLMEvent.providerError({ message: "provider boom" }),
       ),
+    streamWithRuntime: () =>
+      Effect.succeed({
+        runtimeID: "ai-sdk" as const,
+        stream: Stream.make(
+          LLMEvent.stepStart({ index: 0 }),
+          LLMEvent.reasoningStart({ id: "reasoning-1" }),
+          LLMEvent.reasoningDelta({ id: "reasoning-1", text: "thinking" }),
+          LLMEvent.textStart({ id: "text-1" }),
+          LLMEvent.textDelta({ id: "text-1", text: "partial" }),
+          LLMEvent.providerError({ message: "provider boom" }),
+        ),
+      }),
   }),
 )
 const fragmentFailureEnv = LayerNode.compile(root, [...replacements, [LLM.node, fragmentFailureLLM]])
